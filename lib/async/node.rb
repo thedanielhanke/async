@@ -21,8 +21,11 @@
 require 'set'
 
 module Async
+  # The Async Condition which all Tasks inherit from.
+  # @author Samuel Williams
 	class Node
-		def initialize(parent = nil)
+		# Create a new node. 
+    def initialize(parent = nil)
 			@children = Set.new
 			@parent = nil
 			
@@ -31,11 +34,15 @@ module Async
 			end
 		end
 		
-		attr :parent
+
+		# @attr parent [Node, nil]
+    attr :parent
+		# @attr children [Set<Node>]
 		attr :children
 		
 		# Attach this node to an existing parent.
-		def parent=(parent)
+		# @return [void]
+    def parent=(parent)
 			return if @parent.equal?(parent)
 			
 			if @parent
@@ -48,11 +55,20 @@ module Async
 				@parent.children << self
 			end
 		end
-		
+	
+    # Check if the children set is empty.
+    # @return [Boolean]  
 		def finished?
 			@children.empty?
 		end
-		
+	
+    # If the node is a parent and has no children
+    # then the parent will reap itself, consume itself
+    # and reduce itself to nil.
+    #
+    # Very dark, I know.
+    #
+    # @return[void]  
 		def consume
 			if @parent && finished?
 				@parent.reap(self)
@@ -60,9 +76,11 @@ module Async
 				@parent = nil
 			end
 		end
-		
+	
+    # Remove a given child node.
+    # @param child [Node] 
 		def reap(child)
-			@children.delete(child)
+      @children.delete(child)
 		end
 	end
 end
