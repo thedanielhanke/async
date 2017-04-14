@@ -20,23 +20,31 @@
 
 require 'fiber'
 require 'forwardable'
-
 require_relative 'node'
 
 module Async
+  # The Async Condition class.
+  # @author Samuel Williams  
 	class Condition
+    # Create the underlying waiting tasks queue.
+    # @return [void]
 		def initialize
 			@waiting = []
 		end
-		
-		def wait
-			@waiting << Fiber.current
+	
+    # Queue up the current fiber and wait on yielding the task. 
+		# @return [Object]
+    def wait
+      @waiting << Fiber.current
 			
 			Task.yield
 		end
-		
-		def signal(value)
-			while task = @waiting.pop
+	
+    # Signal to a given task that it should resume operations.
+    # @param value [Symbol]
+		# @return [void]
+    def signal(value)
+      while task = @waiting.pop
 				task.resume(value)
 			end
 		end
