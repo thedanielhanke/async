@@ -27,14 +27,26 @@ require 'timers'
 require 'forwardable'
 
 module Async
-	class TimeoutError < RuntimeError
-	end
 	
+  # The Async::TimeoutError class to manage
+  # RuntimeErrors when they happen because of a Timeout.
+  # @author Samuel Williams  
+  class TimeoutError < RuntimeError
+	end
+
+  # The Async::Reactor class manages the logic for the reactor
+  # pattern implemented in this gem.
+  # @params args [Array] catch all for arguments
+  #
 	class Reactor < Node
 		extend Forwardable
 		
+    # Start running the Reactor.
+    # @todo (picat) Clarify this.
+    # @params args [Array]
+    # @return [Reactor]
 		def self.run(*args, &block)
-			if current = Task.current?
+      if current = Task.current?
 				reactor = current.reactor
 				
 				reactor.async(*args, &block)
@@ -50,7 +62,9 @@ module Async
 				return reactor
 			end
 		end
-		
+	
+    # Create a Reactor.
+    # @return [void]
 		def initialize(wrappers: IO)
 			super(nil)
 			
@@ -61,22 +75,29 @@ module Async
 			
 			@stopped = true
 		end
-		
+	
+    # @attr wrappers [Object] 
 		attr :wrappers
+    # @attr stopped [Boolean] 
 		attr :stopped
 		
 		def_delegators :@timers, :every, :after
-		
-		def wrap(io, task)
+	
+    # Wrap a given IO object and associted Task.  
+		# @param io [IO]
+		# @param task [Task]
+    # @return [Wrapper]
+    def wrap(io, task)
 			@wrappers[io].new(io, task)
 		end
-		
+	
 		def with(io, &block)
 			async do |task|
 				task.with(io, &block)
 			end
 		end
-		
+
+    # @return [Task]  
 		def async(*ios, &block)
 			task = Task.new(ios, self, &block)
 			
@@ -96,12 +117,15 @@ module Async
 		def register(*args)
 			@selector.register(*args)
 		end
-		
+	
+    # Stop the Reactor.
+    # @return [void]  
 		def stop
 			@stopped = true
 		end
-		
-		def run(*args, &block)
+	
+		# @todo (picat) Please clarify this.
+    def run(*args, &block)
 			raise RuntimeError, 'Reactor has been closed' if @selector.nil?
 			
 			@stopped = false
@@ -141,7 +165,9 @@ module Async
 			Async.logger.debug{@children.collect{|child| [child.to_s, child.alive?]}.inspect}
 			@stopped = true
 		end
-		
+	
+    # Close each of the children and selector.  
+    # @return [void]
 		def close
 			@children.each(&:stop)
 			
@@ -149,10 +175,15 @@ module Async
 			@selector = nil
 		end
 		
+    # Check if the selector has been closed,
+    # meaning the +close+ method was probably worked.
+    # @return [Boolean]
 		def closed?
 			@selector.nil?
 		end
-		
+	
+    # Put the Reactor to sleep for a given ammount of time.
+    # @params duration [Integer]  
 		def sleep(duration)
 			task = Fiber.current
 			
@@ -167,6 +198,7 @@ module Async
 			timer.cancel if timer
 		end
 		
+    # @params duration [Integer]  
 		def timeout(duration)
 			backtrace = caller
 			task = Fiber.current
