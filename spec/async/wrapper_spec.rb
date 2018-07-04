@@ -166,4 +166,24 @@ RSpec.describe Async::Wrapper do
 			end.to raise_error(IOError, /closed stream/)
 		end
 	end
+	
+	describe '#detatch' do
+		it "can detatch io" do
+			io = input.detatch
+			
+			expect(input.io).to be nil
+			
+			io.close
+		end
+		
+		it "can #close detatched io" do
+			io = input.detatch
+			
+			expect do
+				input.close
+			end.to_not raise_error
+			
+			io.close
+		end
+	end
 end

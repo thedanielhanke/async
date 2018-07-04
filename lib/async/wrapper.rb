@@ -132,13 +132,24 @@ module Async
 		
 		# Close the io and monitor.
 		def close
-			cancel_monitor
-			
-			@io.close
+			if @io
+				cancel_monitor
+				@io.close
+			end
 		end
 		
 		def closed?
-			@io.closed?
+			@io.nil? or @io.closed?
+		end
+		
+		# Unwrap the io from this wrapper. The only valid operation after this is `#close`.
+		def detatch
+			cancel_monitor
+			
+			io = @io
+			@io = nil
+			
+			return io
 		end
 		
 		private
