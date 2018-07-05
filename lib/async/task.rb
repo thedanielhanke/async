@@ -34,7 +34,7 @@ module Async
 	class Task < Node
 		extend Forwardable
 	
-		# Yield the unerlying `result` for the task. If the result
+		# Yield the underlying `result` for the task. If the result
 		# is an Exception, then that result will be raised an its
 		# exception.
 		# @return [Object] result of the task
@@ -44,7 +44,7 @@ module Async
 			if block_given?
 				result = yield
 			else
-				result = Fiber.yield
+				result = Task.current.reactor.yield
 			end
 			
 			if result.is_a? Exception
@@ -86,6 +86,8 @@ module Async
 					# Async.logger.debug("Task #{self} closing: #{$!}")
 					finish!
 				end
+				
+				@reactor.yield(nil)
 			end
 		end
 		
@@ -113,7 +115,7 @@ module Async
 		def run(*args)
 			if @status == :initialized
 				@status = :running
-				@fiber.resume(*args)
+				@reactor.resume(fiber, *args)
 			else
 				raise RuntimeError, "Task already running!"
 			end
@@ -149,7 +151,7 @@ module Async
 			@children.each(&:stop)
 			
 			if @fiber.alive?
-				@fiber.resume(Stop.new)
+				@reactor.resume(@fiber, Stop.new)
 			end
 		end
 	

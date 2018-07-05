@@ -67,7 +67,26 @@ module Async
 			@ready = []
 			@running = []
 			
+			# This is where we come back to when calling `#yield`.
+			@fiber = nil
+			
 			@stopped = true
+		end
+		
+		# Yield the current fiber and resume it on the next iteration of the event loop.
+		def yield(fiber = Fiber.current)
+			@ready << fiber if fiber
+			
+			@fiber.transfer
+		end
+		
+		def resume(fiber, *args)
+			previous = @fiber
+			
+			@fiber = Fiber.current
+			fiber.transfer(*args)
+			
+			@fiber = previous
 		end
 		
 		def to_s
@@ -128,13 +147,6 @@ module Async
 			@ready << fiber
 		end
 		
-		# Yield the current fiber and resume it on the next iteration of the event loop.
-		def yield(fiber = Fiber.current)
-			@ready << fiber
-			
-			Fiber.yield
-		end
-		
 		def finished?
 			super && @ready.empty? && @running.empty?
 		end
@@ -154,7 +166,7 @@ module Async
 				@running, @ready = @ready, @running
 				if @running.any?
 					@running.each do |fiber|
-						fiber.resume if fiber.alive?
+						resume(fiber) if fiber.alive?
 					end
 					@running.clear
 
@@ -186,7 +198,7 @@ module Async
 				# Async.logger.debug(self) {"Selecting with #{@children.count} fibers interval = #{interval.inspect}..."}
 				if monitors = @selector.select(interval)
 					monitors.each do |monitor|
-						monitor.value.resume
+						monitor.value.transfer
 					end
 				end
 			end until @stopped
@@ -222,11 +234,13 @@ module Async
 			
 			timer = self.after(duration) do
 				if fiber.alive?
-					fiber.resume
+					resume(fiber)
 				end
 			end
 			
-			Task.yield
+			Task.yield do
+				self.yield(nil)
+			end
 		ensure
 			timer.cancel if timer
 		end
@@ -243,7 +257,7 @@ module Async
 				if fiber.alive?
 					error = TimeoutError.new("execution expired")
 					error.set_backtrace backtrace
-					fiber.resume error
+					resume(fiber, error)
 				end
 			end
 			

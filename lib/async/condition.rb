@@ -48,11 +48,13 @@ module Async
 		# @see Task.yield which is responsible for handling value.
 		# @return [void]
 		def signal(value = nil)
+			reactor = Task.current.reactor
+			
 			waiting = @waiting
 			@waiting = []
 			
 			waiting.each do |fiber|
-				fiber.resume(value) if fiber.alive?
+				reactor.resume(fiber, value) if fiber.alive?
 			end
 			
 			return nil
