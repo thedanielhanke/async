@@ -73,6 +73,7 @@ RSpec.describe Async::Reactor do
 			expect(subject).to be_stopped
 		end
 	end
+	
 	it "can't return" do
 		expect do
 			Async::Reactor.run do |task|
@@ -100,7 +101,7 @@ RSpec.describe Async::Reactor do
 		expect(result).to be_kind_of(Async::Task)
 	end
 	
-	describe '#async' do
+	describe '#async', timeout: 1 do
 		include_context Async::RSpec::Reactor
 		
 		it "can pass in arguments" do
@@ -134,7 +135,7 @@ RSpec.describe Async::Reactor do
 					
 					condition.signal
 					
-					task.yield
+					task.yield(true)
 					
 					task.children.each(&:wait)
 				end

@@ -41,8 +41,8 @@ module Async
 			end
 			
 			def resume
-				waiting.each do |fiber|
-					fiber.resume(value) if fiber.alive?
+				waiting.each do |task|
+					task.resume(value) if task.alive?
 				end
 			end
 		end

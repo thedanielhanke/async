@@ -32,9 +32,11 @@ module Async
 		# Queue up the current fiber and wait on yielding the task.
 		# @return [Object]
 		def wait
-			@waiting << Fiber.current
+			task = Task.current
 			
-			Task.yield
+			@waiting << task
+			
+			task.yield
 		end
 		
 		# Is any fiber waiting on this notification?
@@ -48,13 +50,11 @@ module Async
 		# @see Task.yield which is responsible for handling value.
 		# @return [void]
 		def signal(value = nil)
-			reactor = Task.current.reactor
-			
 			waiting = @waiting
 			@waiting = []
 			
-			waiting.each do |fiber|
-				reactor.resume(fiber, value) if fiber.alive?
+			waiting.each do |task|
+				task.resume(value) if task.alive?
 			end
 			
 			return nil

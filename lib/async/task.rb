@@ -87,8 +87,13 @@ module Async
 					finish!
 				end
 				
-				@reactor.yield(nil)
+				@fiber = nil
+				@reactor.yield
 			end
+		end
+		
+		def resume(*args)
+			@reactor.resume(@fiber, *args)
 		end
 		
 		def to_s
@@ -100,13 +105,24 @@ module Async
 		def_delegators :@reactor, :timeout, :sleep
 		
 		# Yield back to the reactor and allow other fibers to execute.
-		def yield
-			reactor.yield
+		def yield(ready = false)
+			@reactor << self if ready
+			
+			result = @reactor.yield
+			
+			if result.is_a? Exception
+				raise result
+			else
+				return result
+			end
 		end
 		
 		# @attr fiber [Fiber] The fiber which is being used for the execution of this task.
 		attr :fiber
-		def_delegators :@fiber, :alive?
+		
+		def alive?
+			@fiber != nil and @fiber.alive?
+		end
 		
 		# @attr status [Symbol] The status of the execution of the fiber, one of `:running`, `:complete`, `:stopped`, or `:failed`.
 		attr :status
@@ -115,7 +131,7 @@ module Async
 		def run(*args)
 			if @status == :initialized
 				@status = :running
-				@reactor.resume(fiber, *args)
+				self.resume(*args)
 			else
 				raise RuntimeError, "Task already running!"
 			end
@@ -150,8 +166,8 @@ module Async
 		def stop
 			@children.each(&:stop)
 			
-			if @fiber.alive?
-				@reactor.resume(@fiber, Stop.new)
+			if @fiber
+				self.resume(Stop.new)
 			end
 		end
 	

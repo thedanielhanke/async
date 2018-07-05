@@ -73,20 +73,28 @@ module Async
 			@stopped = true
 		end
 		
-		# Yield the current fiber and resume it on the next iteration of the event loop.
-		def yield(fiber = Fiber.current)
-			@ready << fiber if fiber
-			
+		def transfer
 			@fiber.transfer
 		end
 		
+		# Yield the current fiber and resume it on the next iteration of the event loop.
+		def yield(ready = false)
+			@ready << Task.current if ready
+			transfer
+		end
+		
 		def resume(fiber, *args)
-			previous = @fiber
-			
-			@fiber = Fiber.current
-			fiber.transfer(*args)
-			
-			@fiber = previous
+			if fiber.is_a? Fiber
+				previous = @fiber
+				
+				@fiber = Fiber.current
+				
+				fiber.transfer(*args)
+				
+				@fiber = previous
+			else
+				fiber.resume
+			end
 		end
 		
 		def to_s
@@ -198,7 +206,7 @@ module Async
 				# Async.logger.debug(self) {"Selecting with #{@children.count} fibers interval = #{interval.inspect}..."}
 				if monitors = @selector.select(interval)
 					monitors.each do |monitor|
-						monitor.value.transfer
+						monitor.value.resume
 					end
 				end
 			end until @stopped
@@ -226,21 +234,19 @@ module Async
 		def closed?
 			@selector.nil?
 		end
-	
+		
 		# Put the calling fiber to sleep for a given ammount of time.
 		# @param duration [Numeric] The time in seconds, to sleep for.
 		def sleep(duration)
-			fiber = Fiber.current
+			task = Task.current
 			
 			timer = self.after(duration) do
-				if fiber.alive?
-					resume(fiber)
+				if task.alive?
+					task.resume
 				end
 			end
 			
-			Task.yield do
-				self.yield(nil)
-			end
+			task.yield
 		ensure
 			timer.cancel if timer
 		end
@@ -251,13 +257,13 @@ module Async
 		#   complete.
 		def timeout(duration)
 			backtrace = caller
-			fiber = Fiber.current
+			task = Task.current
 			
 			timer = self.after(duration) do
-				if fiber.alive?
+				if task.alive?
 					error = TimeoutError.new("execution expired")
 					error.set_backtrace backtrace
-					resume(fiber, error)
+					task.resume error
 				end
 			end
 			

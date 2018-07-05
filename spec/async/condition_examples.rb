@@ -32,7 +32,7 @@ RSpec.shared_examples Async::Condition do
 		
 		subject.signal
 		
-		reactor.yield
+		reactor.yield(true)
 		
 		expect(state).to be == :resumed
 	end
