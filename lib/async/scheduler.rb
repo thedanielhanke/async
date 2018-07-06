@@ -22,12 +22,6 @@ require 'fiber'
 
 module Async
 	class Scheduler
-		def initialize
-			@main = Fiber.current
-		end
-		
-		attr :main
-		
 		def spawn(*args, &block)
 			Fiber.new(*args, &block)
 		end
@@ -36,28 +30,40 @@ module Async
 			fiber.resume *args
 		end
 		
-		def yield(fiber)
-			Fiber.yield
+		def yield(*args)
+			Fiber.yield(*args)
 		end
 	end
 	
 	class TransferScheduler
 		def initialize
-			@main = Fiber.current
+			# This is where we come back to when calling `#yield`.
+			@fiber = nil
 		end
 		
-		attr :main
+		attr :fiber
 		
 		def spawn(*args, &block)
 			Fiber.new(*args, &block)
 		end
 		
 		def resume(fiber, *args)
-			fiber.transfer *args
+			# if fiber.inspect =~ /created/
+			# 	@fiber = Fiber.current
+			# 	fiber.resume
+			# else
+				previous = @fiber
+				
+				@fiber = Fiber.current
+				
+				fiber.transfer(*args)
+				
+				@fiber = previous
+			# end
 		end
 		
-		def yield(fiber)
-			@main.transfer
+		def yield(*args)
+			@fiber.transfer(*args)
 		end
 	end
 end

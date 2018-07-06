@@ -65,7 +65,7 @@ RSpec.shared_examples_for Async::Scheduler do
 			
 			fiber = subject.spawn do
 				target.mark
-				subject.yield(Fiber.current)
+				subject.yield
 				target.mark
 			end
 			
