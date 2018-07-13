@@ -21,7 +21,7 @@
 require 'async/scheduler'
 
 RSpec.shared_examples_for Async::Scheduler do
-	let(:target) {double}
+	let(:order) {Array.new}
 	
 	describe '#spawn' do
 		it 'can create a fiber' do
@@ -34,43 +34,53 @@ RSpec.shared_examples_for Async::Scheduler do
 	
 	describe '#resume' do
 		it 'can #resume fiber' do
-			expect(target).to receive(:mark)
-			
 			fiber = subject.spawn do
-				target.mark
+				order << :a
 			end
 			
 			subject.resume(fiber)
+			expect(order).to be == [:a]
 		end
 		
 		it 'exits into outer fiber' do
-			expect(target).to receive(:mark).twice
+			child = nil
 			
 			parent = subject.spawn do
+				order << :a
+				
 				child = subject.spawn do
-					target.mark
+					order << :c
+					subject.yield
+					order << :e
 				end
 				
+				order << :b
 				child.resume
-				target.mark
+				order << :d
 			end
 			
+			order << :A
 			subject.resume(parent)
+			order << :B
+			subject.resume(child)
+			order << :C
+			
+			expect(order).to be == [:A, :a, :b, :c, :d, :B, :e, :C]
 		end
 	end
 	
 	describe '#yield' do
 		it 'can #yield fiber' do
-			expect(target).to receive(:mark).twice
-			
 			fiber = subject.spawn do
-				target.mark
+				order << :a
 				subject.yield
-				target.mark
+				order << :b
 			end
 			
 			subject.resume(fiber)
 			subject.resume(fiber)
+			
+			expect(order).to be == [:a, :b]
 		end
 	end
 end

@@ -48,18 +48,13 @@ module Async
 		end
 		
 		def resume(fiber, *args)
-			# if fiber.inspect =~ /created/
-			# 	@fiber = Fiber.current
-			# 	fiber.resume
-			# else
-				previous = @fiber
-				
-				@fiber = Fiber.current
-				
-				fiber.transfer(*args)
-				
-				@fiber = previous
-			# end
+			previous = @fiber
+			
+			@fiber = Fiber.current
+			
+			fiber.transfer(*args)
+			
+			@fiber = previous
 		end
 		
 		def yield(*args)
